@@ -1,0 +1,75 @@
+PROGRAM manipulateST
+VAR
+//SERVO ON
+power1,power2 : MC_POWER;
+Cam3: ARRAY[0..3] OF SMC_CAMXYVA := [
+      (dX := 0, dY := 0, dV := 0, dA := 0),
+      (dX := 120, dY := 120, dV := 1, dA := 0),
+      (dX := 240, dY := 350, dV := 2, dA := 0),
+      (dX := 360, dY := 360, dV := 0, dA := 0)];
+		//Ust kisimdaki degerler yerine degisken atayarak
+		//cam tablosunu makine calisir iken guncelleyebiliriz.
+	Cam: MC_CAM_REF := (nElements := 4, byType := 3, xStart := 0, 
+	xEnd := 360, nTappets := 0, strCAMName := 'Cam3', 
+	pce := ADR(Cam3), xPartofLM := TRUE);
+	CamSet: SMC_GetCamSlaveSetPosition;
+	MoveVirtual: MC_MoveVelocity;
+	TableSelect: MC_CamTableSelect; 
+	CamIn: MC_CamIn; 
+	EXE: BOOL;
+	SETLE:BOOL;
+	
+END_VAR
+
+/////////////////////////////
+//SERVO POWER BLOCKS
+power1(Axis := Master);
+power1.Enable:= TRUE;
+power1.bRegulatorOn:=TRUE;
+power1.bDriveStart:= TRUE;
+power2(Axis:=IoConfig_Globals.Serv1);
+power2.Enable:= TRUE;
+power2.bRegulatorOn:=TRUE;
+power2.bDriveStart:= TRUE;
+
+//FOR MASTER AXIS VIRTUAL MOVEMENT
+MoveVirtual(Axis := Master);
+
+MoveVirtual.Execute := EXE AND power2.Status;
+MoveVirtual.Velocity := 20;
+MoveVirtual.Acceleration := 10;
+MoveVirtual.Deceleration := 10;
+MoveVirtual.Direction := Positive;
+
+//FOR SELECTING CUSTOM CAM TABLE
+TableSelect(Master:= Master, Slave:= IoConfig_Globals.Serv1,CamTable:= Cam);
+
+TableSelect.Execute := TRUE;
+TableSelect.Periodic := TRUE;
+TableSelect.MasterAbsolute := TRUE;
+TableSelect.SlaveAbsolute := TRUE;
+
+//FOR USING CAM TABLE
+CamIn(Master := Master, Slave := IoConfig_Globals.Serv1);
+
+CamIn.Execute := power1.Status;
+CamIn.MasterOffset := 0;
+CamIn.SlaveOffset := 0;
+CamIn.MasterScaling := 1;
+CamIn.SlaveScaling := 1;
+CamIn.StartMode := absolute;
+CamIn.CamTableID := TableSelect.CamTableID;
+CamIn.VelocityDiff := 1;
+CamIn.Acceleration := 1;
+CamIn.Deceleration := 1;
+CamIn.TappetHysteresis := 1;
+
+CamSet(Master:= Master, Slave := IoConfig_Globals.Serv1);
+CamSet.Enable := SETLE;
+CamSet.MasterOffset:= 10;
+CamSet.SlaveOffset:= 10;
+CamSet.MasterScaling:= 10;
+CamSet.SlaveScaling:= 10;
+CamSet.CamTableID:= TableSelect.CamTableID;
+
+
