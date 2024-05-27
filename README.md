@@ -5,3 +5,5 @@ Jog
 Homing
 CAM
 Editing CAM
+Motion
+Six Axis Motion Program
